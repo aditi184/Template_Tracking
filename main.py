@@ -14,7 +14,13 @@ def main(args):
     # video sequence
     frame_names = os.listdir(os.path.join(args.data_dir, "img"))
     frame_names.sort()
-
+    allimgs = []
+    for img_name in frame_names:
+        img = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name)) 
+        allimgs.append(img)
+    imgs = allimgs[1:]
+    templateImage = allimgs[0]
+    
     # ground truth - only for getting template
     ground_truth = open(os.path.join(args.data_dir, "groundtruth_rect.txt"), 'r').readlines()
     template = ground_truth[0][:-1].split(",") # (x,y,w,h)
