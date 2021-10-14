@@ -1,0 +1,8 @@
+*.DS_Store
+*.py[cod]
+**/__pycache__
+*.ipynb_checkpoints
+*.mp4
+*.ipynb
+*.zip
+A2
