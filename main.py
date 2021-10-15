@@ -2,6 +2,8 @@ import os
 import cv2
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Template Tracking')
@@ -9,6 +11,12 @@ def parse_args():
                                                         help="Path to the dataset")
     args = parser.parse_args()
     return args
+
+
+def show_img(img):
+    plt.imshow(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
+    plt.show()
+
 
 def main(args):
     # video sequence
@@ -23,7 +31,35 @@ def main(args):
     
     # ground truth - only for getting template
     ground_truth = open(os.path.join(args.data_dir, "groundtruth_rect.txt"), 'r').readlines()
-    template = ground_truth[0][:-1].split(",") # (x,y,w,h)
+    templateCoordinates = ground_truth[0][:-1].split(",") # (x,y,w,h)
+
+    x1 = int(templateCoordinates[0])
+    y1 = int(templateCoordinates[1])
+    width = int(templateCoordinates[2])
+    height = int(templateCoordinates[3])
+    x2 = x1 + width
+    y2 = y1 + height
+    template = templateImage[y1:y2,x1:x2]
+    
+    c = 0
+    for i in allimgs:
+        res = cv2.matchTemplate(i,template,cv2.TM_CCOEFF_NORMED)
+        threshold = 0.8
+        loc = np.where( res >= threshold)
+        for pt in zip(*loc[::-1]):
+            cv2.rectangle(i, pt, (pt[0] + width, pt[1] + height), (0,255,255), 1)
+        pred_x = pt[0]
+        pred_y = pt[1]
+        pred_w = pt[0] + width   
+        pred_h = pt[1] + height 
+        outputString = str(pred_x)  + ',' + str(pred_y)  + ',' + str(pred_w) + ',' + str(pred_h)
+        outputFile = open('output.txt', 'a')    
+        outputFile.write(outputString)
+        outputFile.write('\n')
+    outputFile.close()
+
+
+
 
 if __name__ == "__main__":
     args = parse_args()
