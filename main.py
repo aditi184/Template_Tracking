@@ -40,22 +40,31 @@ def main(args):
     x2 = x1 + width
     y2 = y1 + height
     template = templateImage[y1:y2,x1:x2]
-    
+    # show_img(template)
     c = 0
-    for i in allimgs:
+    for idx, i in enumerate(allimgs):
         res = cv2.matchTemplate(i,template,cv2.TM_CCOEFF_NORMED)
-        threshold = 0.8
+        threshold = 0.5
         loc = np.where( res >= threshold)
+        # print("LOC = " , loc)
+        # print("star LOC = " , *loc)
+        # print("IN FOR LOOP LOC = " , *loc[::-1])
         for pt in zip(*loc[::-1]):
             cv2.rectangle(i, pt, (pt[0] + width, pt[1] + height), (0,255,255), 1)
+        
         pred_x = pt[0]
+        # print("_____________________________________" , idx , "_____________________________" )
+        # print(pred_x)
         pred_y = pt[1]
-        pred_w = pt[0] + width   
-        pred_h = pt[1] + height 
+        pred_w =  width + 1
+        pred_h =  height + 1
         outputString = str(pred_x)  + ',' + str(pred_y)  + ',' + str(pred_w) + ',' + str(pred_h)
         outputFile = open('output.txt', 'a')    
         outputFile.write(outputString)
         outputFile.write('\n')
+        # c = c+1
+        # if(c==20):
+        #     break
     outputFile.close()
 
 
@@ -64,3 +73,7 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     main(args)
+
+
+
+
