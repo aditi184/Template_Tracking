@@ -20,6 +20,29 @@ def get_patch(image, bb, gray = True):
     x, y, w, h = bb[0], bb[1], bb[2], bb[3] # w is along x (right), h is along y (down)
     return image[y:y+h, x:x+w] if gray == True else image[y:y+h, x:x+w, :]
 
+def read_dataset(args):
+    # predictions of bounding boxes
+    predictions = []
+    
+    # video sequence
+    frame_names = os.listdir(os.path.join(args.data_dir, "img"))
+    frame_names.sort()
+    
+    # ground truth - only for getting template
+    ground_truth = open(os.path.join(args.data_dir, "groundtruth_rect.txt"), 'r').readlines()
+    template_coord = ground_truth[0][:-1].split(",") # (x,y,w,h)
+    # str to int
+    for i in range(4):
+        template_coord[i] = int(template_coord[i])
+
+    # add first bounding box or the template coordinates although it is not included in mIOU calculation
+    predictions.append(",".join(map(str,template_coord)))
+
+    # template from template image (cropped)
+    template_img = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), frame_names[0]), 0) # 0 denotes gray scale
+
+    return predictions, frame_names, template_img, template_coord
+
 def save_predictions(predictions, name):
     # input a list of tuples
     predictions = "\n".join(predictions)+"\n"
