@@ -16,25 +16,26 @@ def parse_args():
     parser.add_argument('-m1', '--m1_method', type=str, default = 'ncc', help = "method for appearance based tracking")
     parser.add_argument('-tf', '--transformation', type=int, default=1, help = "transformation: 0-translation, 1-affine, 2-projective")
     parser.add_argument('--iterations', type=int, default=10, help="max iterations for LK")
+    parser.add_argument('--num_pyr_lyr', type=int, default=3, help="number of pyramid layers") # one means simple LK
 
     args = parser.parse_args()
     return args
 
-def run_LK_algo(frame, template, template_coord, args, epsilon=0.001):
+def run_LK_algo(frame, template, template_coord, iterations, args, epsilon=0.001, warp_params=None):
     # frame and template are gray scale
     (h, w) = frame.shape
 
     # initialize warp_params such that W = get_Warp(warp_params) is Identity matrix
-    warp_params = get_init_warp_params(args.transformation)
+    warp_params = get_init_warp_params(args.transformation) if warp_params == None else warp_params
 
-    for i in range(args.iterations):
+    for i in range(iterations):
         # 1. warp the frame with W(warp_params)
         W = get_Warp(warp_params=warp_params, transformation=args.transformation)
         warped_frame = cv2.warpAffine(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC) #flags=cv2.WARP_INVERSE_MAP
-        warped_patch = get_patch(frame, template_coord, gray=True).astype(np.uint8)
+        warped_patch = get_patch(warped_frame, template_coord, gray=True).astype(np.uint8)
 
         # 2. Get the error between T(x) and I(W(x;p))
-        assert template.dtype == warped_patch.dtype
+        assert template.shape == warped_patch.shape
         error = template - warped_patch
 
         # 3. compute warped gradients Del I, evaluated at W(x;p)
@@ -79,7 +80,7 @@ def run_LK_algo(frame, template, template_coord, args, epsilon=0.001):
 
 def get_patch(image, bb, gray = True):
     x, y, w, h = bb[0], bb[1], bb[2], bb[3] # w is along x (right), h is along y (down)
-    return image[y:y+h, x:x+w] if gray == True else image[y:y+h, x:x+w, :]
+    return image[y:y+h+1, x:x+w+1] if gray == True else image[y:y+h+1, x:x+w+1, :]
 
 def get_init_warp_params(transformation=1):
     warp_params = None

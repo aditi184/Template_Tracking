@@ -37,7 +37,7 @@ def appearence_based_tracking(args):
 
     save_predictions(predictions, args)
 
-def lucas_kanade(args):
+def lucas_kanade(args, pyramid_lk=False):
     # predictions is a list containing strings of bounding boxes | right now it just contains the template coordinates
     predictions, frame_names, template_img, template_coord = read_dataset(args)
     template = get_patch(template_img, template_coord, gray=True)
@@ -50,8 +50,27 @@ def lucas_kanade(args):
         # further pre-processing required ? like normalization ??
 
         # image, template, template_img all are gray-scale
-        warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, args=args)
-        W = get_Warp(warp_params=warp_params, transformation=args.transformation)
+        if pyramid_lk == False:
+            warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, iterations=args.iterations, args=args)
+            W = get_Warp(warp_params=warp_params, transformation=args.transformation)
+        else:
+            num_pyr_lyrs = args.num_pyr_lyr - 1
+            iter_list = [5, args.iterations]
+            image_list, template_list, template_coord_list = [image], [template], [template_coord]
+            curr_image, curr_template, curr_template_coord = image, template, template_coord
+            for i in range(num_pyr_lyrs):
+                curr_image = cv2.pyrDown(curr_image)
+                curr_template = cv2.pyrDown(curr_template)
+                curr_template_coord = (np.array(curr_template_coord) * 1/2).astype(int).tolist()
+                image_list.append(curr_image)
+                template_list.append(curr_template)
+                template_coord_list.append(curr_template_coord)
+
+            warp_params = None
+            while len(image_list) != 0:
+                image, template, template_coord = image_list.pop(), template_list.pop(), template_coord_list.pop()
+                warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, iterations=iter_list.pop(), args=args, warp_params=warp_params)
+            W = get_Warp(warp_params=warp_params, transformation=args.transformation)
 
         # predict the template_coord using warp_params | this is geometric transformation
         point_1 = np.array(template_coord[0:2] + [1]).reshape(3,1)
@@ -71,7 +90,7 @@ def lucas_kanade(args):
     save_predictions(predictions, args)
 
 def pyramid_lk(args):
-    pass
+    lucas_kanade(args, pyramid_lk=True)
 
 if __name__ == "__main__":
     args = parse_args()
