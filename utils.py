@@ -110,7 +110,11 @@ def get_Warp(warp_params, transformation=1):
         ]) # this ordering matters while computing the jacobian wrt (p0, p1, p2, p3, p4, p5)
     elif transformation == 2:
         # projective transformation
-        pass
+        W = np.array([
+            [1+warp_params[0], warp_params[3], warp_params[6]],
+            [warp_params[1], 1+warp_params[4], warp_params[7]],
+            [warp_params[2], warp_params[5], 1+warp_params[8]]
+        ]) # this ordering matters while computing the jacobian wrt (p0, p1, p2, p3, p4, p5, p6, p7, p8)
     return W
 
 def get_warp_jacobian(shape, transformation = 1):
