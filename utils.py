@@ -55,8 +55,7 @@ def run_LK_algo(frame, template, template_coord, iterations=100, epsilon=0.001):
 
         # 7. Multiply Steepest descent with the error
         error = np.expand_dims(np.expand_dims(error, axis=2), axis=2)
-        # intermediate = np.matmul(stp_dsc.transpose(0,1,3,2), error) # (template.shape,6,1)
-        intermediate = stp_dsc.transpose(0,1,3,2) * error
+        intermediate = np.matmul(stp_dsc.transpose(0,1,3,2), error) # (template.shape,6,1)
         intermediate = np.sum(intermediate, axis=(0,1))
 
         # 8. Compute del_warp_params 
