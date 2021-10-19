@@ -8,26 +8,29 @@ import matplotlib.pyplot as plt
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Template Tracking')
-    parser.add_argument('-i', '--data_dir', type=str, default='Liquor', required=True, \
-        help="Path to the dataset")
-    parser.add_argument('-m', '--method', type=int, default=3, \
-        help="method of template tracking: 1-appearence, 2-LK, 3-PyramidLK")
-    parser.add_argument('-m1', '--m1_method',type = str,default = 'ncc' , help = "method for appearance based tracking")
+    
+    parser.add_argument('-i', '--data_dir', type=str, default='Liquor', required=True, help="Path to the dataset")
+    parser.add_argument('-m', '--method', type=int, default=1, help="method of template tracking: 1-appearence, 2-LK, 3-PyramidLK")
     parser.add_argument('-e', '--eval', action="store_true", help="evaluate or not")
+
+    parser.add_argument('-m1', '--m1_method', type=str, default = 'ncc', help = "method for appearance based tracking")
+    parser.add_argument('-tf', '--transformation', type=int, default=1, help = "transformation: 0-translation, 1-affine, 2-projective")
+    parser.add_argument('--iterations', type=int, default=10, help="max iterations for LK")
+
     args = parser.parse_args()
     return args
 
-def run_LK_algo(frame, template, template_coord, iterations=100, epsilon=0.001):
+def run_LK_algo(frame, template, template_coord, args, epsilon=0.001):
     # frame and template are gray scale
     (h, w) = frame.shape
 
     # initialize warp_params such that W = get_Warp(warp_params) is Identity matrix
-    warp_params = np.zeros(6)
+    warp_params = get_init_warp_params(args.transformation)
 
-    for i in range(iterations):
+    for i in range(args.iterations):
         # 1. warp the frame with W(warp_params)
-        W = get_Warp(warp_params=warp_params, affine=True)
-        warped_frame = cv2.warpAffine(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.WARP_INVERSE_MAP) # flags = cv2.INTER_CUBIC # adding warp_inv_map as it should be IG
+        W = get_Warp(warp_params=warp_params, transformation=args.transformation)
+        warped_frame = cv2.warpAffine(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC) #flags=cv2.WARP_INVERSE_MAP
         warped_patch = get_patch(frame, template_coord, gray=True).astype(np.uint8)
 
         # 2. Get the error between T(x) and I(W(x;p))
@@ -36,13 +39,16 @@ def run_LK_algo(frame, template, template_coord, iterations=100, epsilon=0.001):
 
         # 3. compute warped gradients Del I, evaluated at W(x;p)
         # Reference: https://opencv24-python-tutorials.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_gradients/py_gradients.html
-        sobel_x, sobel_y = cv2.Sobel(frame, cv2.CV_64F, 1, 0, ksize=5), cv2.Sobel(frame, cv2.CV_64F, 0, 1, ksize=5) # find gradients
-        sobel_x, sobel_y = cv2.warpAffine(sobel_x, W, (w, h)), cv2.warpAffine(sobel_y, W, (w, h) ) # warp the gradient-image
-        sobel_x, sobel_y = get_patch(sobel_x, template_coord), get_patch(sobel_y, template_coord) # get the warped-gradient-patch
+        # find gradients
+        sobel_x, sobel_y = cv2.Sobel(frame, cv2.CV_64F, 1, 0, ksize=5), cv2.Sobel(frame, cv2.CV_64F, 0, 1, ksize=5)
+        # warp the gradient-image
+        sobel_x, sobel_y = cv2.warpAffine(sobel_x, W, (w, h), flags=cv2.INTER_CUBIC), cv2.warpAffine(sobel_y, W, (w, h), flags=cv2.INTER_CUBIC)
+        # get the warped-gradient-patch
+        sobel_x, sobel_y = get_patch(sobel_x, template_coord), get_patch(sobel_y, template_coord)
         del_I = np.expand_dims(np.stack([sobel_x, sobel_y], axis=2), axis=2)
 
         # 4. evaluate the jacobian of the warping
-        warp_jacobian = get_warp_jacobian(shape=template.shape, transformation=1) # (template.shape,2,6)
+        warp_jacobian = get_warp_jacobian(shape=template.shape, transformation=args.transformation) # (template.shape,2,6)
 
         # 5. Compute the steepest descent using Jacobian and Image(frame) gradient
         stp_dsc = np.matmul(del_I, warp_jacobian) # (template.shape,1,6)
@@ -50,7 +56,7 @@ def run_LK_algo(frame, template, template_coord, iterations=100, epsilon=0.001):
         # 6. Compute Inverse Hessian
         hessian = np.matmul(stp_dsc.transpose(0,1,3,2), stp_dsc) # (template.shape,6,6)
         hessian = np.sum(hessian, axis=(0,1))
-        assert hessian.shape == (6,6)
+        # assert hessian.shape == (6,6)
         H_inv = np.linalg.pinv(hessian)
 
         # 7. Multiply Steepest descent with the error
@@ -75,12 +81,36 @@ def get_patch(image, bb, gray = True):
     x, y, w, h = bb[0], bb[1], bb[2], bb[3] # w is along x (right), h is along y (down)
     return image[y:y+h, x:x+w] if gray == True else image[y:y+h, x:x+w, :]
 
-def get_Warp(warp_params, affine=True):
+def get_init_warp_params(transformation=1):
+    warp_params = None
+    if transformation == 0:
+        # translation transformation
+        warp_params = np.zeros(2)
+    elif transformation == 1:
+        # affine transformation
+        warp_params = np.zeros(6)
+    elif transformation == 2:
+        # projective transformation
+        warp_params = np.zeros(9)
+    return warp_params
+
+def get_Warp(warp_params, transformation=1):
     W = None
-    if affine:
-        W = [1+warp_params[0], warp_params[2], warp_params[4], warp_params[1], 1+warp_params[3], warp_params[5]] # de-plag
-        W = np.array(W)
-        W = W.reshape(2,3)
+    if transformation == 0:
+        # translation transformation
+        W = np.array([
+            [1, 0, warp_params[0]],
+            [0, 1, warp_params[1]]
+        ])
+    elif transformation == 1:
+        # affine transformation
+        W = np.array([
+            [1+warp_params[0], warp_params[2], warp_params[4]],
+            [warp_params[1], 1+warp_params[3], warp_params[5]]
+        ]) # this ordering matters while computing the jacobian wrt (p0, p1, p2, p3, p4, p5)
+    elif transformation == 2:
+        # projective transformation
+        pass
     return W
 
 def get_warp_jacobian(shape, transformation = 1):

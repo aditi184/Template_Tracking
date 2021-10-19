@@ -4,9 +4,6 @@ import pandas
 import argparse
 import numpy as np
 
-# import ipdb # remove this line before final submission
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='make video using frames and corresponding bounding boxes')
     parser.add_argument('--data_dir', type=str) # data directory should contain frames in "img" sub-directory

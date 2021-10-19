@@ -43,23 +43,22 @@ def lucas_kanade(args):
     template = get_patch(template_img, template_coord, gray=True)
 
     for img_name in tqdm(frame_names[1:]):
-        image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name) )
+        image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name), 0)
 
         # preprocessing on the current frame
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) # is it really needed from implementation perspective?
         image = cv2.GaussianBlur(image, (3,3),0) # @aditi: check this hyperparams; we may remove this if useless 
         # further pre-processing required ? like normalization ??
 
         # image, template, template_img all are gray-scale
-        warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord)
-        W = get_Warp(warp_params=warp_params, affine=True)
+        warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, args=args)
+        W = get_Warp(warp_params=warp_params, transformation=args.transformation)
 
         # predict the template_coord using warp_params | this is geometric transformation
         point_1 = np.array(template_coord[0:2] + [1]).reshape(3,1)
-        point_1 = np.dot(W, point_1).astype(np.int).reshape(-1)
+        point_1 = np.dot(W, point_1).astype(int).reshape(-1)
         x2, y2 = template_coord[0] + template_coord[2], template_coord[1] + template_coord[3]
         point_2 = np.array([x2, y2] + [1]).reshape(3,1)
-        point_2 = np.dot(W, point_2).astype(np.int).reshape(-1)
+        point_2 = np.dot(W, point_2).astype(int).reshape(-1)
 
         predicted_bb = point_1.tolist() + (point_2 - point_1).tolist()
         predictions.append(",".join(map(str, predicted_bb)))
