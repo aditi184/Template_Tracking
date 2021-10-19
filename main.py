@@ -15,7 +15,7 @@ def appearence_based_tracking(args):
     
     for img_name in tqdm(frame_names[1:]):
         image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name), 0)
-        image = cv2.GaussianBlur(image,(3,3),0)
+        image = cv2.GaussianBlur(image,(11,11),0)
 
         if(args.m1_method == 'ncc'):
             result = cv2.matchTemplate(image,template,cv2.TM_CCOEFF_NORMED)
@@ -24,7 +24,7 @@ def appearence_based_tracking(args):
             (pred_x,pred_y) = maxLoc
         else:
             result = cv2.matchTemplate(image,template,cv2.TM_SQDIFF)
-            # cv2.normalize(result,result,cv2.NORM_MINMAX,-1)
+            cv2.normalize(result,result,cv2.NORM_MINMAX)
             _,_,minLoc,_ = cv2.minMaxLoc(result)
             (pred_x,pred_y) = minLoc
 

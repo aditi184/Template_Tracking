@@ -14,7 +14,7 @@ def appearence_based_tracking(template,img):
 def main():
     camera = cv2.VideoCapture(0)
     print("ADITI KHANDELWAL")
-    template_img = cv2.imread("LiveTrack1.png")
+    template_img = cv2.imread("A2\\LiveTrack1.png")
     print(template_img)
     while True:
         print("HEELLOO")
