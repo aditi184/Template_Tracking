@@ -3,7 +3,6 @@ from tqdm import tqdm # remove if needed
 import subprocess # remove if needed
 import os
 import cv2
-import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -42,6 +41,7 @@ def lucas_kanade(args, pyramid_lk=False):
     predictions, frame_names, template_img, template_coord = read_dataset(args)
     template = get_patch(template_img, template_coord, gray=True)
 
+    # idx = 1
     for img_name in tqdm(frame_names[1:]):
         image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name), 0)
 
@@ -55,7 +55,9 @@ def lucas_kanade(args, pyramid_lk=False):
             W = get_Warp(warp_params=warp_params, transformation=args.transformation)
         else:
             num_pyr_lyrs = args.num_pyr_lyr - 1
-            iter_list = [args.iterations] * (num_pyr_lyrs+1)
+            # iter_list = [args.iterations] * (num_pyr_lyrs+1)
+            iter_list = args.iter_list.split(",")
+            iter_list = [int(it) for it in iter_list]
             for i in range(len(iter_list)):
                 iter_list[i] = iter_list[i] - args.iterations + i + 2
             image_list, template_list, template_coord_list = [image], [template], [template_coord]
@@ -99,9 +101,11 @@ def lucas_kanade(args, pyramid_lk=False):
         predictions.append(",".join(map(str, predicted_bb)))
 
         # update the template, template_img, and template_coord
-        # template_coord[0], template_coord[1], template_coord[2], template_coord[3] = point_1[0], point_1[1], point_2[0] - point_1[0], point_2[1] - point_1[1]
-        # template_img = image
-        # template = get_patch(template_img, template_coord)
+        # if idx%10 == 0:
+        #     template_coord[0], template_coord[1], template_coord[2], template_coord[3] = point_1[0], point_1[1], point_2[0] - point_1[0], point_2[1] - point_1[1]
+        #     template_img = image
+        #     template = get_patch(template_img, template_coord)
+        # idx += 1
 
     save_predictions(predictions, args)
 

@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument('-tf', '--transformation', type=int, default=1, help = "transformation: 0-translation, 1-affine, 2-projective")
     parser.add_argument('--iterations', type=int, default=10, help="max iterations for LK")
     parser.add_argument('--num_pyr_lyr', type=int, default=3, help="number of pyramid layers") # one means simple LK
+    parser.add_argument('--iter_list', type=str, help="iteration list for each level in pyramid-LK")
 
     args = parser.parse_args()
     return args
