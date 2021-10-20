@@ -46,7 +46,7 @@ def lucas_kanade(args, pyramid_lk=False):
         image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name), 0)
 
         # preprocessing on the current frame
-        image = cv2.GaussianBlur(image,(11,11),0)
+        # image = cv2.GaussianBlur(image,(11,11),0)
 
         # image, template, template_img all are gray-scale
         if pyramid_lk == False:
@@ -57,8 +57,8 @@ def lucas_kanade(args, pyramid_lk=False):
             # iter_list = [args.iterations] * (num_pyr_lyrs+1)
             iter_list = args.iter_list.split(",")
             iter_list = [int(it) for it in iter_list]
-            for i in range(len(iter_list)):
-                iter_list[i] = iter_list[i] - args.iterations + i + 2
+            # for i in range(len(iter_list)):
+                # iter_list[i] = iter_list[i] - args.iterations + i + 2
             image_list, template_list, template_coord_list = [image], [template], [template_coord]
             curr_image, curr_template, curr_template_coord = image, template, template_coord
             for i in range(num_pyr_lyrs):
