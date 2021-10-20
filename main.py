@@ -55,7 +55,9 @@ def lucas_kanade(args, pyramid_lk=False):
             W = get_Warp(warp_params=warp_params, transformation=args.transformation)
         else:
             num_pyr_lyrs = args.num_pyr_lyr - 1
-            iter_list = [5, args.iterations]
+            iter_list = [args.iterations] * (num_pyr_lyrs+1)
+            for i in range(len(iter_list)):
+                iter_list[i] = iter_list[i] - args.iterations + i + 2
             image_list, template_list, template_coord_list = [image], [template], [template_coord]
             curr_image, curr_template, curr_template_coord = image, template, template_coord
             for i in range(num_pyr_lyrs):
