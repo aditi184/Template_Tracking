@@ -46,8 +46,7 @@ def lucas_kanade(args, pyramid_lk=False):
         image = cv2.imread(os.path.join(os.path.join(args.data_dir, "img"), img_name), 0)
 
         # preprocessing on the current frame
-        image = cv2.GaussianBlur(image, (3,3),0) # @aditi: check this hyperparams; we may remove this if useless 
-        # further pre-processing required ? like normalization ??
+        image = cv2.GaussianBlur(image,(11,11),0)
 
         # image, template, template_img all are gray-scale
         if pyramid_lk == False:
