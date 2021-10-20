@@ -74,10 +74,23 @@ def lucas_kanade(args, pyramid_lk=False):
 
         # predict the template_coord using warp_params | this is geometric transformation
         point_1 = np.array(template_coord[0:2] + [1]).reshape(3,1)
-        point_1 = np.dot(W, point_1).astype(int).reshape(-1)
+        if args.transformation == 2:
+            point_1 = np.dot(W, point_1).reshape(-1)
+            point_1[0] /= point_1[2]
+            point_1[1] /= point_1[2]
+            point_1 = point_1[:-1].astype(int)
+        else:
+            point_1 = np.dot(W, point_1).astype(int).reshape(-1)
+
         x2, y2 = template_coord[0] + template_coord[2], template_coord[1] + template_coord[3]
         point_2 = np.array([x2, y2] + [1]).reshape(3,1)
-        point_2 = np.dot(W, point_2).astype(int).reshape(-1)
+        if args.transformation == 2:
+            point_2 = np.dot(W, point_2).reshape(-1)
+            point_2[0] /= point_2[2]
+            point_2[1] /= point_2[2]
+            point_2 = point_2[:-1].astype(int)
+        else:
+            point_2 = np.dot(W, point_2).astype(int).reshape(-1)
 
         predicted_bb = point_1.tolist() + (point_2 - point_1).tolist()
         predictions.append(",".join(map(str, predicted_bb)))

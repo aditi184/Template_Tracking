@@ -1,4 +1,5 @@
-import ipdb # remove if needed
+import ipdb
+from numpy.lib.type_check import imag # remove if needed
 from tqdm import tqdm # remove if needed
 import os
 import cv2
@@ -31,7 +32,10 @@ def run_LK_algo(frame, template, template_coord, iterations, args, epsilon=0.001
     for i in range(iterations):
         # 1. warp the frame with W(warp_params)
         W = get_Warp(warp_params=warp_params, transformation=args.transformation)
-        warped_frame = cv2.warpAffine(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC) #flags=cv2.WARP_INVERSE_MAP
+        if args.transformation == 2:
+            warped_frame = cv2.warpPerspective(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC)
+        else:
+            warped_frame = cv2.warpAffine(src=frame, M=W, dsize=(frame.shape[1], frame.shape[0]), flags=cv2.INTER_CUBIC) #flags=cv2.WARP_INVERSE_MAP
         warped_patch = get_patch(warped_frame, template_coord, gray=True).astype(np.uint8)
 
         # 2. Get the error between T(x) and I(W(x;p))
@@ -43,13 +47,17 @@ def run_LK_algo(frame, template, template_coord, iterations, args, epsilon=0.001
         # find gradients
         sobel_x, sobel_y = cv2.Sobel(frame, cv2.CV_64F, 1, 0, ksize=5), cv2.Sobel(frame, cv2.CV_64F, 0, 1, ksize=5)
         # warp the gradient-image
-        sobel_x, sobel_y = cv2.warpAffine(sobel_x, W, (w, h), flags=cv2.INTER_CUBIC), cv2.warpAffine(sobel_y, W, (w, h), flags=cv2.INTER_CUBIC)
+        if args.transformation == 2:
+            sobel_x, sobel_y = cv2.warpPerspective(sobel_x, W, (w, h), flags=cv2.INTER_CUBIC), cv2.warpPerspective(sobel_y, W, (w, h), flags=cv2.INTER_CUBIC)
+        else:
+            sobel_x, sobel_y = cv2.warpAffine(sobel_x, W, (w, h), flags=cv2.INTER_CUBIC), cv2.warpAffine(sobel_y, W, (w, h), flags=cv2.INTER_CUBIC)
+        
         # get the warped-gradient-patch
         sobel_x, sobel_y = get_patch(sobel_x, template_coord), get_patch(sobel_y, template_coord)
         del_I = np.expand_dims(np.stack([sobel_x, sobel_y], axis=2), axis=2)
 
         # 4. evaluate the jacobian of the warping
-        warp_jacobian = get_warp_jacobian(shape=template.shape, transformation=args.transformation) # (template.shape,2,6)
+        warp_jacobian = get_warp_jacobian(shape=template.shape, transformation=args.transformation, warp_params=warp_params) # (template.shape,2,6)
 
         # 5. Compute the steepest descent using Jacobian and Image(frame) gradient
         stp_dsc = np.matmul(del_I, warp_jacobian) # (template.shape,1,6)
@@ -118,7 +126,7 @@ def get_Warp(warp_params, transformation=1):
         ]) # this ordering matters while computing the jacobian wrt (p0, p1, p2, p3, p4, p5, p6, p7, p8)
     return W
 
-def get_warp_jacobian(shape, transformation = 1):
+def get_warp_jacobian(shape, transformation, warp_params):
     jacobian = None
     (h, w) = shape
 
@@ -157,8 +165,21 @@ def get_warp_jacobian(shape, transformation = 1):
         #     [],
         #     []
         # ]
-        pass
+        numerator_patch = (1 + warp_params[0]) * img_patch[0] + warp_params[3] * img_patch[1] + warp_params[6]
+        denominator_patch = warp_params[2] * img_patch[0] + warp_params[5] * img_patch[1] + 1 + warp_params[8]
+        
+        jacobian_x = [img_patch[0]/denominator_patch, zeros_patch, -1 * numerator_patch * img_patch[0]/ (denominator_patch**2)]
+        jacobian_x+= [img_patch[1]/denominator_patch, zeros_patch, -1 * numerator_patch * img_patch[1]/ (denominator_patch**2)]
+        jacobian_x+= [1/denominator_patch, zeros_patch, -1 * numerator_patch / (denominator_patch**2)]
+        jacobian_x = np.stack(jacobian_x, axis=2)
 
+        jacobian_y = [zeros_patch, img_patch[0]/denominator_patch, -1 * numerator_patch * img_patch[0]/ (denominator_patch**2)]
+        jacobian_y+= [zeros_patch, img_patch[1]/denominator_patch, -1 * numerator_patch * img_patch[1]/ (denominator_patch**2)]
+        jacobian_y+= [zeros_patch, 1/denominator_patch, -1 * numerator_patch / (denominator_patch**2)]
+        jacobian_y = np.stack(jacobian_y, axis=2)
+
+        jacobian = np.stack([jacobian_x, jacobian_y], axis=2)
+        assert len(jacobian.shape) == 4 and jacobian.shape[-2:] == (2,9)
     return jacobian
 
 def read_dataset(args):
