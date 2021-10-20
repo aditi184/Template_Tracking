@@ -22,12 +22,12 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def run_LK_algo(frame, template, template_coord, iterations, args, epsilon=0.001, warp_params=None):
+def run_LK_algo(frame, template, template_coord, iterations, args, warp_params=None, init_wp=True, epsilon=0.001):
     # frame and template are gray scale
     (h, w) = frame.shape
 
     # initialize warp_params such that W = get_Warp(warp_params) is Identity matrix
-    warp_params = get_init_warp_params(args.transformation) if warp_params == None else warp_params
+    warp_params = get_init_warp_params(args.transformation) if init_wp == True else warp_params
 
     for i in range(iterations):
         # 1. warp the frame with W(warp_params)

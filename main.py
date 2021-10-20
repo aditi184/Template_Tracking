@@ -66,10 +66,11 @@ def lucas_kanade(args, pyramid_lk=False):
                 template_list.append(curr_template)
                 template_coord_list.append(curr_template_coord)
 
-            warp_params = None
+            warp_params, init_wp = None, True
             while len(image_list) != 0:
                 image, template, template_coord = image_list.pop(), template_list.pop(), template_coord_list.pop()
-                warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, iterations=iter_list.pop(), args=args, warp_params=warp_params)
+                warp_params = run_LK_algo(frame=image, template=template, template_coord=template_coord, iterations=iter_list.pop(), args=args, warp_params=warp_params, init_wp=init_wp)
+                init_wp = False
             W = get_Warp(warp_params=warp_params, transformation=args.transformation)
 
         # predict the template_coord using warp_params | this is geometric transformation
